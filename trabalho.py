@@ -1,198 +1,116 @@
-    class Produtoerrado(Exception):
-        def __init__(self, codigo, mensagem="Produto não encontrado no catálogo"):
-            self.codigo = codigo
-            self.mensagem = f"{mensagem} (código {codigo})"
-            super().__init__(self.mensagem)
+    class ErroArtigoIndisponivel(Exception):
+    def __init__(self, message):
+        super().__init__(message)
 
+class ErroQuantidadeInvalida(Exception):
+    def __init__(self, message):
+        super().__init__(message)
 
-    class SaldoInsuficiente(Exception):
-        def __init__(self, saldo, valor, mensagem="Saldo insuficiente para realizar a compra"):
-            self.saldo = saldo
-            self.valor = valor
-            self.mensagem = f"{mensagem}. Saldo atual: {saldo:.2f}€, Valor da compra: {valor:.2f}€"
-            super().__init__(self.mensagem)
+class ErroSaldoInsuficiente(Exception):
+    def __init__(self, message):
+        super().__init__(message)
 
+class ErroCestaVazia(Exception):
+    def __init__(self, message):
+        super().__init__(message)
 
-    class CarrinhoVazio(Exception):
-        def __init__(self, mensagem="Não é possível finalizar uma compra com o carrinho vazio"):
-            self.mensagem = mensagem
-            super().__init__(self.mensagem)
-
-
-    class Loja:
-        def __init__(self):
-            self.produtos = {
-                1: ["T-shirt", 29.90],
-                2: ["Calças de Ganga", 89.90],
-                3: ["Sapatos", 119.90],
-                4: ["Relógio", 159.90]     
-            }
-            self.carrinho = {}
-            self.saldo = 500.00
-
-        def exibir_catalogo(self):
-            print("\n" + "="*50)
-            print("CATÁLOGO DE PRODUTOS".center(50))
-            print("="*50)
-            print(f"{'CÓDIGO':<10}{'PRODUTO':<30}{'PREÇO (€)':>10}")
-            print("-"*50)
-            for codigo, info in self.produtos.items():
-                print(f"{codigo:<10}{info[0]:<30}{info[1]:>10.2f}")
-            print("="*50)
-
-        def addicionarcarrinho(self, codigo, qtd):
-            if codigo not in self.produtos:
-                raise Produtoerrado(codigo)
+class SistemaLoja:
+    def __init__(self):
+        self.artigos = {
+            "calças": 22.50,
+            "sapatilhas": 100.00,
+            "bolo": 13.00,
+        }
+        self.cesta = {}
+        self.saldo = 300.00
+        
+    def mostrar_artigos(self):
+        print("\nArtigos Disponíveis na Loja")
+        print("-" * 30)
+        for artigo, preco in self.artigos.items():
+            print(f"{artigo.capitalize()}: €{preco:.2f}")
+        print("-" * 30)
+    
+    def adicionar_a_cesta(self):
+        try:
+            artigo = input("Nome do artigo desejado: ").strip().lower()
+            if artigo not in self.artigos:
+                raise ErroArtigoIndisponivel("Este artigo não está disponível na nossa loja.")
             
-            if qtd <= 0:
-                raise ValueError("A quantidade deve ser superior a zero")
+            qtd_str = input("Quantidade desejada: ")
+            if not qtd_str.isdigit() or int(qtd_str) <= 0:
+                raise ErroQuantidadeInvalida("Por favor, indique uma quantidade válida.")
             
-            if codigo in self.carrinho:
-                self.carrinho[codigo] += qtd
+            quantidade = int(qtd_str)
+            
+            if artigo in self.cesta:
+                self.cesta[artigo] += quantidade
             else:
-                self.carrinho[codigo] = qtd
-                
-            nome_produto = self.produtos[codigo][0]
-            print(f"\n{qtd}x {nome_produto} adicionado(s) ao carrinho!")
-
-        def exibir_carrinho(self):
-            if not self.carrinho:
-                print("\nO carrinho está vazio!")
-                return 0
+                self.cesta[artigo] = quantidade
             
-            total = 0
-            print("\n" + "="*60)
-            print("CARRINHO DE COMPRAS".center(60))
-            print("="*60)
-            print(f"{'PRODUTO':<30}{'PREÇO (€)':<15}{'QTD':<8}{'SUBTOTAL (€)':>15}")
-            print("-"*60)
-            
-            for codigo, qtd in self.carrinho.items():
-                nome = self.produtos[codigo][0]
-                preco = self.produtos[codigo][1]
-                subtotal = preco * qtd
-                total += subtotal
-                print(f"{nome:<30}{preco:<15.2f}{qtd:<8}{subtotal:>15.2f}")
-            
-            print("-"*60)
-            print(f"{'TOTAL:':<45}{total:>15.2f}")
-            print("="*60)
-            return total
-
-        def finalizar_compra(self):
-            if not self.carrinho:
-                raise CarrinhoVazio()
+            print(f"{quantidade} x {artigo} adicionado à cesta.")
+        
+        except (ErroArtigoIndisponivel, ErroQuantidadeInvalida) as erro:
+            print(f"Erro: {erro}")
+        except Exception:
+            print("Ocorreu um erro inesperado.")
+    def calcular_total(self):
+        total = 0
+        for artigo, quantidade in self.cesta.items():
+            if artigo in self.artigos:
+                total += self.artigos[artigo] * quantidade
+        print(f"\nValor total da compra: €{total:.2f}")
+        return total
+    
+    def finalizar_compra(self):
+        try:
+            if not self.cesta:
+                raise ErroCestaVazia("A sua cesta está vazia.")
             
             total = self.calcular_total()
             
             if total > self.saldo:
-                raise SaldoInsuficiente(self.saldo, total)
+                raise ErroSaldoInsuficiente("Não tem saldo suficiente para concluir a compra.")
             
             self.saldo -= total
-            print(f"\nCompra realizada com sucesso! Novo saldo: {self.saldo:.2f}€")
-            
-            self.carrinho = {}
-            return True
-
-        def calcular_total(self):
-            total = 0
-            for codigo, qtd in self.carrinho.items():
-                preco = self.produtos[codigo][1]
-                total += preco * qtd
-            return total
-
-        def ver_saldo(self):
-            print(f"\nO seu saldo atual é: {self.saldo:.2f}€")
-
-
-    def menu():
-        print("\n" + "="*40)
-        print("SISTEMA DE LOJA VIRTUAL".center(40))
-        print("="*40)
-        print("1. Ver catálogo de produtos")
-        print("2. Adicionar produto ao carrinho")
-        print("3. Ver carrinho")
-        print("4. Finalizar compra")
-        print("5. Verificar saldo")
-        print("0. Sair")
-        print("="*40)
-
-        try:
-            opcao = int(input("Escolha uma opção: "))
-            return opcao
-        except ValueError:
-            print("\nPor favor, introduza um número.")
-            return -1
-
-
-    def main():
-        loja = Loja()
+            print(f"\nPagamento concluído com sucesso!")
+            print(f"Valor pago: €{total:.2f}")
+            print(f"Saldo atual: €{self.saldo:.2f}")
+            self.cesta.clear()
         
+        except (ErroCestaVazia, ErroSaldoInsuficiente) as erro:
+            print(f"Erro: {erro}")
+        except Exception:
+            print("Ocorreu um erro inesperado.")
+    
+    def consultar_saldo(self):
+        print(f"\nSaldo disponível: €{self.saldo:.2f}")
+    
+    def executar(self):
         while True:
-            opcao = menu()
+            print("\nMenu Principal")
+            print("1 - Ver artigos disponíveis")
+            print("2 - Adicionar artigo à cesta")
+            print("3 - Ver total da compra")
+            print("4 - Finalizar compra")
+            print("5 - Consultar saldo")
+            print("0 - Sair")
             
-            if opcao == 0:
-                print("\nVolte sempre!")
+            opcao = input("\nEscolha uma opção: ").strip()
+            
+            if opcao == "1":
+                self.mostrar_artigos()
+            elif opcao == "2":
+                self.adicionar_a_cesta()
+            elif opcao == "3":
+                self.calcular_total()
+            elif opcao == "4":
+                self.finalizar_compra()
+            elif opcao == "5":
+                self.consultar_saldo()
+            elif opcao == "0":
+                print("A sair do programa. Até à próxima!")
                 break
-                
-            elif opcao == 1:
-                loja.exibir_catalogo()
-                
-            elif opcao == 2:
-                loja.exibir_catalogo()
-                try:
-                    codigo = int(input("\nIntroduza o código do produto: "))
-                    qtd = int(input("Introduza a quantidade desejada: "))
-                    
-                    try:
-                        loja.add_ao_carrinho(codigo, qtd)
-                    except Produtoerrado as e:
-                        print(f"\nERRO: {e.mensagem}")
-                    except ValueError as e:
-                        print(f"\nERRO: {e}")
-                    else:
-                        print("Produto adicionado com sucesso!")
-                    finally:
-                        print("Operação de adição ao carrinho concluída.")
-                        
-                except ValueError:
-                    print("\nERRO: Por favor, introduza valores numéricos válidos.")
-                    
-            elif opcao == 3:
-                loja.exibir_carrinho()
-                
-            elif opcao == 4:
-                try:
-                    valor_total = loja.exibir_carrinho()
-                    if valor_total > 0:
-                        confirmacao = input("\nDeseja finalizar a compra? (S/N): ").upper()
-                        if confirmacao == 'S':
-                            try:
-                                loja.finalizar_compra()
-                            except SaldoInsuficiente as e:
-                                print(f"\nERRO: {e.mensagem}")
-                                print("Remova alguns artigos ou verifique o seu saldo.")
-                            except CarrinhoVazio as e:
-                                print(f"\nERRO: {e.mensagem}")
-                                print("Adicione produtos ao carrinho antes de finalizar.")
-                            else:
-                                print("Compra finalizada com sucesso! Obrigado pela preferência.")
-                            finally:
-                                print("Operação de finalização concluída.")
-                        else:
-                            print("\nOperação cancelada.")
-                except Exception as e:
-                    print(f"\nERRO inesperado: {e}")
-                    
-            elif opcao == 5:
-                loja.ver_saldo()
-                
             else:
-                if opcao != -1:
-                    print("\nOpção inválida! Por favor, escolha uma opção válida.")
-                    
-            input("\nPressione ENTER para continuar...")
+                print("Opção inválida. Tente novamente.")
 
-
-    if __name__ == "__main__":
-        main()
